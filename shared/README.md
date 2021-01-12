@@ -2,7 +2,10 @@
 In this project a parallel version of the AtA algorithm in a shared memory model is provided, together with a sequential, highly optimized implementation of the Strassen's algorithm.
 
 ## Prerequisite
-In order to build the shared memory parallel implementation of the AtA algorithm, you need a working installation of *Intel MKL* (which you can find [here](https://software.intel.com/content/www/us/en/develop/tools/oneapi/base-toolkit.html)).  
+In order to build the shared memory parallel implementation of the AtA algorithm, you need a working installation of *Intel MKL*, which you can either find [here](https://software.intel.com/content/www/us/en/develop/tools/oneapi/base-toolkit.html) or install through the package manager with the command
+```
+sudo apt-get install intel-mkl
+```
 As an alternative, you can build the project using any *CBLAS* backend. For example, you can use [*OpenBlas*](https://www.openblas.net/), or the distribution provided from the *Linux* package manager, which you can easily install with the command
 ```
 `sudo apt-get install libblas-dev
