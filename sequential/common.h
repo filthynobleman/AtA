@@ -9,8 +9,12 @@
 
 
 #include <stdlib.h>
+#ifdef USE_MKL
 #include <mkl.h>
 #include <mkl_cblas.h>
+#else
+#include <cblas.h>
+#endif
 #include <stdio.h>
 #include <math.h>
 #include <string.h>

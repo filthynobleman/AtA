@@ -19,8 +19,8 @@ void Usage(const char* ProgName)
 {
     printf("Usage: %s [-N n] [-K k] [-t] [-c]\n", ProgName);
     printf("\n");
-    printf("Generates a random matrix A (k-by-N) and computes the\n");
-    printf("product C = A^T * B (m-by-k).\n");
+    printf("Generates a random matrix A (k-by-n) and computes the\n");
+    printf("product C = A^T * A (n-by-n).\n");
     printf("If the optional argument -c is given, also computes the\n");
     printf("product with cblas_?syrk.\n");
     printf("If the optional argument -t is given, the execution time\n");

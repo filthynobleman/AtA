@@ -6,7 +6,7 @@ void mat_gemtm(const Matrix *A, const Matrix* B, Matrix* C, const real alpha, co
 {
 	cblas_gemm(CblasRowMajor, CblasTrans, CblasNoTrans,
 //	strassen(CblasTrans, CblasNoTrans, 
-			A->NumCols, B->NumCols, A->NumRows,
+			   A->NumCols, B->NumCols, A->NumRows,
 			   alpha, A->A, A->NumCols, B->A, B->NumCols,
 			   beta, C->A, C->NumCols);
 }

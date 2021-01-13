@@ -84,7 +84,7 @@ TaskTree SimulateExecution(Matrix* Matrix_A, Matrix* Matrix_C, size_t NumProcs, 
 				AtBProcs = 1;
 				AtAProcs -= 1;
 			}
-			else if (AtAProcs < 2)
+			else if (AtAProcs < 6)
 			{
 				AtAProcs = 2;
 				AtBProcs = t.Budget - AtAProcs;

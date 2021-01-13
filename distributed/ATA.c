@@ -30,9 +30,208 @@ void GenerateRandomMatrix(real* M, size_t n, size_t m)
 		M[i] = rand() / ((real)RAND_MAX);
 }
 
-void AtAn(Matrix* A, Matrix* C){
 
 
+void SendTaskData(TaskTree* Tree, int ID)
+{
+    size_t Level = Tree->Height;
+    TaskNode* Node = NULL;
+    do
+    {
+        GetTaskNode(Tree, ID, Level--, &Node);
+        if (Node != NULL)
+        {
+            register size_t i;
+            Task T = Node->T;
+            size_t ByteSize = T.A.NumRows * T.A.NumCols * sizeof(real);
+            real* A0 = (real*)malloc(ByteSize);
+            for (i = 0; i < T.A.NumRows; ++i)
+                memcpy(A0 + i * T.A.NumCols, T.A.M->A + SUBMATIDX(&(T.A), i, 0), T.A.NumCols * sizeof(real));
+            MPI_Send(A0, T.A.NumRows * T.A.NumCols, MPI_RREAL, ID, 0, MPI_COMM_WORLD);
+            free(A0);
+
+            if (T.Type != ATA)
+            {
+                size_t ByteSize = T.B.NumRows * T.B.NumCols * sizeof(real);
+                real* B0 = (real*)malloc(ByteSize);
+                for (i = 0; i < T.B.NumRows; ++i)
+                    memcpy(B0 + i * T.B.NumCols, T.B.M->A + SUBMATIDX(&(T.B), i, 0), T.B.NumCols * sizeof(real));
+                MPI_Send(B0, T.B.NumRows * T.B.NumCols, MPI_RREAL, ID, 0, MPI_COMM_WORLD);
+                free(B0);
+            }
+        }
+    } while(Node == NULL);
+}
+
+
+void ReceiveTaskData(TaskTree* Tree, int ID, real** _A0, real** _B0)
+{
+    *_A0 = NULL;
+    *_B0 = NULL;
+    size_t Level = Tree->Height;
+    TaskNode* Node = NULL;
+    do
+    {
+        GetTaskNode(Tree, ID, Level--, &Node);
+        if (Node != NULL)
+        {
+            register size_t i;
+            MPI_Status Status;
+            Task T = Node->T;
+            size_t ByteSize = T.A.NumRows * T.A.NumCols * sizeof(real);
+            real* A0 = (real*)malloc(ByteSize);
+            MPI_Recv(A0, T.A.NumRows * T.A.NumCols, MPI_RREAL, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &Status);
+            *_A0 = A0;
+
+#ifdef DEBUG_MODE
+            printf("Me, process %d, I now know my task, and the matrix size is %lu.\n", ID, ByteSize / sizeof(real));
+            fflush(stdout);
+#endif
+
+            if (T.Type != ATA)
+            {
+                size_t ByteSize = T.B.NumRows * T.B.NumCols * sizeof(real);
+                real* B0 = (real*)malloc(ByteSize);
+                MPI_Recv(B0, T.B.NumRows * T.B.NumCols, MPI_RREAL, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &Status);
+                *_B0 = B0;
+            }
+        }
+    } while(Node == NULL);
+}
+
+
+void DistributeMatrix(Matrix* A, Matrix* C, int NumProcs)
+{
+    TaskTree Tree = SimulateExecution(A, C, NumProcs, ALPHA);
+    int ID;
+    for (ID = 1; ID < NumProcs; ++ID)
+    {
+#ifdef DEBUG_MODE
+        printf("Sending data to process %d.\n", ID);
+        fflush(stdout);
+#endif
+        SendTaskData(&Tree, ID);
+    }
+}
+
+void ReceiveMatrix(Matrix* A, Matrix* C, real** A0, real** B0, int ID, int NumProcs)
+{
+    TaskTree Tree = SimulateExecution(A, C, NumProcs, ALPHA);
+#ifdef DEBUG_MODE
+    printf("Me, process %d, I now know the tree.\n", ID);
+    fflush(stdout);
+#endif
+    ReceiveTaskData(&Tree, ID, A0, B0);
+}
+
+void RetrieveMasterTask(Matrix* A, Matrix* C, real** _A0, real** _B0, int ID, int NumProcs)
+{
+    TaskTree Tree = SimulateExecution(A, C, NumProcs, ALPHA);
+#ifdef DEBUG_MODE
+    printf("Me, process %d, I now know the tree.\n", ID);
+    fflush(stdout);
+#endif
+
+    *_A0 = NULL;
+    *_B0 = NULL;
+    size_t Level = Tree.Height;
+    TaskNode* Node = NULL;
+    do
+    {
+        GetTaskNode(&Tree, ID, Level--, &Node);
+        if (Node != NULL)
+        {
+            register size_t i;
+            Task T = Node->T;
+            size_t ByteSize = T.A.NumRows * T.A.NumCols * sizeof(real);
+            real* A0 = (real*)malloc(ByteSize);
+            for (i = 0; i < T.A.NumRows; ++i)
+                memcpy(A0 + i * T.A.NumCols, T.A.M->A + SUBMATIDX(&(T.A), i, 0), T.A.NumCols * sizeof(real));
+            *_A0 = A0;
+
+#ifdef DEBUG_MODE
+            printf("Me, process %d, I now know my task, and the matrix size is %lu.\n", ID, ByteSize / sizeof(real));
+            fflush(stdout);
+#endif
+
+            if (T.Type != ATA)
+            {
+                size_t ByteSize = T.B.NumRows * T.B.NumCols * sizeof(real);
+                real* B0 = (real*)malloc(ByteSize);
+                for (i = 0; i < T.B.NumRows; ++i)
+                    memcpy(B0 + i * T.B.NumCols, T.B.M->A + SUBMATIDX(&(T.B), i, 0), T.B.NumCols * sizeof(real));
+                *_B0 = B0;
+            }
+        }
+    } while(Node == NULL);
+}
+
+
+void LeafTaskComputation(Task T, int ID, const real* A0, const real* B0, real** _C0)
+{
+#ifdef DEBUG_MODE
+    printf("Me, process %d, I am starting the computation.\n", ID);
+    fflush(stdout);
+#endif
+    Matrix sC0;
+    real* C0 = NULL;
+    if (T.Type == ATA){
+        integer n = T.A.NumRows;
+        integer m = T.A.NumCols;
+        integer ia = T.A.BegRow;
+        integer ja = T.A.BegCol;
+
+        C0 = (real*)malloc(m * m * sizeof(real)); 
+        
+        Matrix sA0 = {A0, n, m};
+        sC0.A = C0;
+        sC0.NumRows = m;
+        sC0.NumCols = m; 
+#ifdef DEBUG_MODE
+        printf("Me, process %d, I am performing ?syrk.\n", ID);
+        fflush(stdout);
+#endif
+        mat_syrk(&sA0, &sC0, 1, 0);   
+#ifdef DEBUG_MODE
+        printf("Me, process %d, I have performed ?syrk.\n", ID);
+        fflush(stdout);
+#endif
+
+        // Packing matrix for efficient communication
+        for (register int i = 1; i < sC0.NumRows; ++i)
+            memcpy(C0 + i * (i + 1) / 2, C0 + i * m, (i + 1) * sizeof(real));
+        
+    } else {
+        integer n = T.A.NumRows;
+        integer m = T.A.NumCols;
+        integer k = T.B.NumCols;
+        
+        C0 = (real*)malloc(m * k * sizeof(real));
+        
+        Matrix sA0 = {A0, n, m};
+        Matrix sB0 = {B0, n, k};
+        sC0.A = C0;
+        sC0.NumRows = m;
+        sC0.NumCols = k;
+
+#ifdef DEBUG_MODE
+        printf("Me, process %d, I am performing ?gemm.\n", ID);
+        fflush(stdout);
+#endif
+        mat_gemtm(&sA0, &sB0, &sC0, 1, 0);
+#ifdef DEBUG_MODE
+        printf("Me, process %d, I have performed ?gemm.\n", ID);
+        fflush(stdout);
+#endif
+    }
+    *_C0 = C0;
+}
+
+
+
+
+double AtAn(Matrix* A, Matrix* C)
+{
 	int size, id;
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &id);
@@ -49,19 +248,52 @@ void AtAn(Matrix* A, Matrix* C){
 			exit(1);
 		}
 	}
-	integer N = A->NumRows;
-	integer M = A->NumCols;
-	C->NumRows = M;
-	C->NumCols = M;
-    TaskTree Tree = SimulateExecution(A, C, size, ALPHA);
+    integer N = A->NumRows;
+    integer M = A->NumCols;
+    C->NumRows = M;
+    C->NumCols = M;
+    real* A0 = NULL;
+    real* B0 = NULL;
+    real* C0 = NULL;
 
+    if (id == 0)
+    {
+#ifdef DEBUG_MODE
+        printf("Starting distribution of matrix A.\n");
+        fflush(stdout);
+        double DisT1 = MPI_Wtime();
+#endif
+        DistributeMatrix(A, C, size);
+        RetrieveMasterTask(A, C, &A0, &B0, id, size);
+#ifdef DEBUG_MODE
+        double DisT2 = MPI_Wtime();
+        printf("Distribution process took %.3f seconds.\n", DisT2 - DisT1);
+        fflush(stdout);
+#endif
+    }
+    else
+    {
+#ifdef DEBUG_MODE
+        double DisT1 = MPI_Wtime();
+#endif
+        ReceiveMatrix(A, C, &A0, &B0, id, size);
+#ifdef DEBUG_MODE
+        double DisT2 = MPI_Wtime();
+        printf("Process %d received data after %.3f seconds.\n", id, DisT2 - DisT1);
+        fflush(stdout);
+#endif
+    }
+
+
+    double t1 = MPI_Wtime();
+    double t2;
+
+
+    TaskTree Tree = SimulateExecution(A, C, size, ALPHA);
 
     size_t Level;
     TaskNode* Node = NULL;
     int IsInnerNode = 0;
-    real* C0 = NULL;
-    real* A0 = NULL;
-    real* B0 = NULL;
     Matrix sC0;
     MPI_Status status; 
     // Start from the leaf task and proceed up
@@ -80,61 +312,23 @@ void AtAn(Matrix* A, Matrix* C){
         //          resuls, hence I only have to pass the result above
         if (! IsInnerNode)
         {// I am a leaf I do task T
-            double ExecStart = MPI_Wtime();
-            if (T.Type == ATA){
-                integer n = T.A.NumRows;
-                integer m = T.A.NumCols;
-                integer ia = T.A.BegRow;
-                integer ja = T.A.BegCol;
-
-                A0 = (real*)malloc(n * m * sizeof(real));
-                
-                for (int i = 0; i < n; ++i)
-                    memcpy(A0 + i * m, A->A + (ia + i) * M + ja, m * sizeof(real));
-
-                C0 = (real*)malloc(m * m * sizeof(real)); //QUI
-                
-                Matrix sA0 = {A0, n, m};
-                sC0.A = C0;
-                sC0.NumRows = m;
-                sC0.NumCols = m; // va spostato fuori dall'if
-                mat_syrk(&sA0, &sC0, 1, 0); //UNCOMMENTING THIS -> UNCOMMENTING C0 MALLOC QUI
-                for (register int i = 1; i < sC0.NumRows; ++i)
-                    memcpy(C0 + i * (i + 1) / 2, C0 + i * m, (i + 1) * sizeof(real));
-                // AtA(&sA0, &sC0);
-                // C0 = sC0.A;
-                free(A0);
-            } else {
-                integer n = T.A.NumRows;
-                integer m = T.A.NumCols;
-                integer k = T.B.NumCols;
-
-                A0 = (real*)malloc(n * m * sizeof(real));
-                B0 = (real*)malloc(n * k * sizeof(real));
-                
-                for (int i = 0; i < n; ++i)
-                    memcpy(A0 + i * m, A->A + SUBMATIDX(&(T.A), i, 0), m * sizeof(real));
-                
-                for (int i = 0; i < n; ++i)
-                    memcpy(B0 + i * k, A->A + SUBMATIDX(&(T.B), i, 0), k * sizeof(real));
-                
-                C0 = (real*)malloc(m * k * sizeof(real)); // QUI
-                
-                Matrix sA0 = {A0, n, m};
-                Matrix sB0 = {B0, n, k};
-                sC0.A = C0;
-                sC0.NumRows = m;
-                sC0.NumCols = k;// va spostato fuori dall'if
-                mat_gemtm(&sA0, &sB0, &sC0, 1, 0); //UNCOMMENTING THIS -> UNCOMMENTING C0 MALLOC  QUI
-                //MatMult(&sA0, &sB0, &sC0);
-                
-                free(A0);
+#ifdef ONLY_COMPUTE
+            t1 = MPI_Wtime();
+#endif
+            LeafTaskComputation(T, id, A0, B0, &C0);
+            free(A0);
+            if (T.Type == ATB)
                 free(B0);
-            }
+            sC0.A = C0;
+            sC0.NumRows = T.C.NumRows;
+            sC0.NumCols = T.C.NumCols;
+
 #if defined(SYNCHRONIZE_PROCESSES) || defined(ONLY_COMPUTE)
             MPI_Barrier(MPI_COMM_WORLD);
 #ifdef ONLY_COMPUTE
-            return;
+            t2 = MPI_Wtime();
+            free(C0);
+            return t2 - t1;
 #endif
 #endif
         } else {
@@ -197,7 +391,7 @@ void AtAn(Matrix* A, Matrix* C){
                 {
                     // CP = (real*)malloc(ChildTask.C.NumRows * ChildTask.C.NumCols * sizeof(real));
                     // Use MPI to receive from process P the result CP
-                    if (ChildTask.Type == ATA){
+                    if (ChildTask.Type == ATA)
                         MPI_Recv(CP, ChildTask.C.NumRows * (ChildTask.C.NumCols + 1) / 2, MPI_RREAL, P, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
                     else
                         MPI_Recv(CP, ChildTask.C.NumRows * ChildTask.C.NumCols, MPI_RREAL, P, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
@@ -268,7 +462,10 @@ void AtAn(Matrix* A, Matrix* C){
     }
     if (id == 0)
     	C->A = C0;
-	return;
+
+    t2 = MPI_Wtime();
+	
+    return t2 - t1;
 }
 
 
@@ -282,46 +479,37 @@ double RunBench(real* A, size_t N, size_t M)
 	
 	double t1, t2, diff;
 
+	if (id == 0)
+    {
 #ifdef DEBUG_MODE
-	printf("id %d\n", id);
-	printf("Generating random %lu-by-%lu matrix... ", N, M);
-	t1 = MPI_Wtime();
+        printf("Generating random %lu-by-%lu matrix...\n", N, M);
+        t1 = MPI_Wtime();
 #endif
-	if (A == NULL)
-	{
-		fprintf(stderr, "Cannot allocate A->");
-		exit(1);
+		GenerateRandomMatrix(A, N, M);  
+#ifdef DEBUG_MODE
+        t2 = MPI_Wtime();
+        diff = t2 - t1;
+        printf("%1.2f seconds.\n", diff);
+#endif
 	}
-	if (id == 0){
-		GenerateRandomMatrix(A, N, M);
-	}
-	MPI_Bcast(A, N * M, MPI_RREAL, 0, MPI_COMM_WORLD);
 
 
 	Matrix A0 = {A, N, M};
-#ifdef DEBUG_MODE
-	t2 = MPI_Wtime();
-	diff = t2 - t1;
-	printf("%1.2f seconds.\n", diff);
-#endif
 	
 	MPI_Barrier(MPI_COMM_WORLD);
 	Matrix AtAC0;
 	if (size > 1){
 #ifdef DEBUG_MODE
-		printf("Computing product with AtA->.. ");
+		printf("Computing product with AtA...\n");
 #endif
-        t1 = MPI_Wtime();
-		AtAn(&A0, &AtAC0);
-        t2 = MPI_Wtime();
-		diff = t2 - t1;
+		diff = AtAn(&A0, &AtAC0);
 #ifdef DEBUG_MODE
 		printf("%1.2f seconds. id %d\n", diff, id);
 		MPI_Barrier(MPI_COMM_WORLD);
 #endif
 	} else {
 #ifdef DEBUG_MODE
-		printf("Computing product with AtA->.. ");
+		printf("Computing product with cblas_?syrk...\n");
 #endif
         t1 = MPI_Wtime();
         AtAC0.A = (real*)malloc(M * M * sizeof(real));
@@ -378,10 +566,12 @@ int main(int argc, const char const **argv)
 {
     MPI_Init(&argc, &argv);
     int size;
+    int ID;
     MPI_Comm_size(MPI_COMM_WORLD, &size);  
+    MPI_Comm_rank(MPI_COMM_WORLD, &ID);
     printf("numProcs %d\n", size);
     fflush(stdout); 
-   if (argc < 5)
+    if (argc < 5)
     {
         fprintf(stderr, "Not enough input arguments.\n");
         fprintf(stderr, "Usage: %s NumRuns NumRows NumCols Output\n", argv[0]);
@@ -391,11 +581,15 @@ int main(int argc, const char const **argv)
     size_t NumRuns = atol(argv[1]);
     size_t NumRows = atol(argv[2]);
     size_t NumCols = atol(argv[3]);
-    real* A = (real*)malloc(NumRows * NumCols * sizeof(real));
-    if (A == NULL)
+    real* A = NULL;
+    if (ID == 0)
     {
-        fprintf(stderr, "Cannot allocate A->");
-        exit(1);
+        A = (real*)malloc(NumRows * NumCols * sizeof(real));
+        if (A == NULL)
+        {
+            fprintf(stderr, "Cannot allocate A.\n");
+            exit(1);
+        }
     }
 
     srand(0);
@@ -411,8 +605,6 @@ int main(int argc, const char const **argv)
 
     free(A);
 
-    int ID;
-    MPI_Comm_rank(MPI_COMM_WORLD, &ID);
     if (ID == 0)
     {
         FILE *stream = fopen(argv[4], "w");
