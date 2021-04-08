@@ -1,16 +1,4 @@
-/**
- * @file       strassen.c
- *
- * @brief      Implementation of Strassen's algorithm for A^T * B.
- *
- * @author     Filippo Maggioli, Viviana Arrigoni
- *             {maggioli,arrigoni}@di.uniroma1.it
- *             Sapienza, University of Rome - Department of Computer Science
- *             
- * @date       12 Jan 2021
- */
 #include "strassen.h"
-
 
 #define ATB_BASE 512
 
@@ -22,8 +10,6 @@ void StrassenATBRec(const MKL_INT m, const MKL_INT n, const MKL_INT k,
                     real* C, const MKL_INT ldc,
                     real* M, real* lh, real* rh)
 {
-    // Base case
-    // Use CBLAS ?gemm
     if (k <= ATB_BASE || n <= ATB_BASE || m <= ATB_BASE)
     {
         cblas_gemm(CblasRowMajor, CblasTrans, CblasNoTrans,
@@ -65,23 +51,26 @@ void StrassenATBRec(const MKL_INT m, const MKL_INT n, const MKL_INT k,
     // C22 = M1 - M2 + M3 + M6
 
     register MKL_INT i;
+    MKL_INT lhlen;
+    MKL_INT rhlen;
     // M1 = (A11 + A22)^T * (B11 + B22)
     // lh = A11 + A22 is k2-by-m2
-    for (i = 0; i < k - k2; ++i)
-    {
-        memcpy(lh + i * m2, A11 + i * lda, m2 * sizeof(real));
-        cblas_axpy(m - m2, 1, A22 + i * lda, 1, lh + i * m2, 1);
-    }
-    if (k2 > k - k2)
-        memcpy(lh + (k2 - 1) * m2, A11 + (k2 - 1) * lda, m2 * sizeof(real));
     // rh = B11 + B22 is k2-by-n2
+    lhlen = m2 * sizeof(real);
+    rhlen = n2 * sizeof(real);
     for (i = 0; i < k - k2; ++i)
     {
-        memcpy(rh + i * n2, B11 + i * ldb, n2 * sizeof(real));
+        memcpy(lh + i * m2, A11 + i * lda, lhlen);
+        cblas_axpy(m - m2, 1, A22 + i * lda, 1, lh + i * m2, 1);
+
+        memcpy(rh + i * n2, B11 + i * ldb, rhlen);
         cblas_axpy(n - n2, 1, B22 + i * ldb, 1, rh + i * n2, 1);
     }
     if (k2 > k - k2)
-        memcpy(rh + (k2 - 1) * n2, B11 + (k2 - 1) * ldb, n2 * sizeof(real));
+    {
+        memcpy(lh + (k2 - 1) * m2, A11 + (k2 - 1) * lda, lhlen);
+        memcpy(rh + (k2 - 1) * n2, B11 + (k2 - 1) * ldb, rhlen);
+    }
     // Recursive call
     memset(M, 0, m2 * n2 * sizeof(real));
     StrassenATBRec(m2, n2, k2, alpha, lh, m2, rh, n2, M, n2, sM, slh, srh);
@@ -97,13 +86,14 @@ void StrassenATBRec(const MKL_INT m, const MKL_INT n, const MKL_INT k,
 
     // M2 = (A12 + A22)^T * B11
     // lh = A12 + A22 is k2-by-(m - m2)
+    lhlen = (m - m2) * sizeof(real);
     for (i = 0; i < k - k2; ++i)
     {
-        memcpy(lh + i * (m - m2), A12 + i * lda, (m - m2) * sizeof(real));
+        memcpy(lh + i * (m - m2), A12 + i * lda, lhlen);
         cblas_axpy(m - m2, 1, A22 + i * lda, 1, lh + i * (m - m2), 1);
     }
     if (k2 > k - k2)
-        memcpy(lh + (k2 - 1) * (m - m2), A12 + (k2 - 1) * lda, (m - m2) * sizeof(real));
+        memcpy(lh + (k2 - 1) * (m - m2), A12 + (k2 - 1) * lda, lhlen);
     // Recurseve call
     memset(M, 0, m2 * n2 * sizeof(real));
     StrassenATBRec(m - m2, n2, k2, alpha, lh, m - m2, B11, ldb, M, n2, sM, slh, srh);
@@ -117,13 +107,14 @@ void StrassenATBRec(const MKL_INT m, const MKL_INT n, const MKL_INT k,
 
     // M3 = A11 * (B12 - B22)
     // rh = B12 - B22 is k2-by-(n - n2)
+    rhlen = (n - n2) * sizeof(real);
     for (i = 0; i < k - k2; ++i)
     {
-        memcpy(rh + i * (n - n2), B12 + i * ldb, (n - n2) * sizeof(real));
+        memcpy(rh + i * (n - n2), B12 + i * ldb, rhlen);
         cblas_axpy(n - n2, -1, B22 + i * ldb, 1, rh + i * (n - n2), 1);
     }
     if (k2 > k - k2)
-        memcpy(rh + (k2 - 1) * (n - n2), B12 + (k2 - 1) * ldb, (n - n2) * sizeof(real));
+        memcpy(rh + (k2 - 1) * (n - n2), B12 + (k2 - 1) * ldb, rhlen);
     // Recursive call
     memset(M, 0, m2 * n2 * sizeof(real));
     StrassenATBRec(m2, n - n2, k2, alpha, A11, lda, rh, n - n2, M, n - n2, sM, slh, srh);
@@ -139,9 +130,10 @@ void StrassenATBRec(const MKL_INT m, const MKL_INT n, const MKL_INT k,
 
     // M4 = A22^T * (B21 - B11)
     // rh = B21 - B11 is (k - k2)-by-n2, since multiplication by A22 excludes the last row
+    rhlen = n2 * sizeof(real);
     for (i = 0; i < k - k2; ++i)
     {
-        memcpy(rh + i * n2, B21 + i * ldb, n2 * sizeof(real));
+        memcpy(rh + i * n2, B21 + i * ldb, rhlen);
         cblas_axpy(n2, -1, B11 + i * ldb, 1, rh + i * n2, 1);
     }
     // Recursive call
@@ -157,9 +149,10 @@ void StrassenATBRec(const MKL_INT m, const MKL_INT n, const MKL_INT k,
 
     // M5 = (A11 + A21)^T * B22
     // lh = A11 + A21 is (k - k2)-by-m2, since multiplication by B22 excludes the last row
+    lhlen = m2 * sizeof(real);
     for (i = 0; i < k - k2; ++i)
     {
-        memcpy(lh + i * m2, A11 + i * lda, m2 * sizeof(real));
+        memcpy(lh + i * m2, A11 + i * lda, lhlen);
         cblas_axpy(m2, 1, A21 + i * lda, 1, lh + i * m2, 1);
     }
     // Recursive call
@@ -175,17 +168,17 @@ void StrassenATBRec(const MKL_INT m, const MKL_INT n, const MKL_INT k,
 
     // M6 = (A12 - A11)^T * (B11 + B12)
     // lh = A12 - A11 is k2-by-m2
+    // rh = B11 + B12 is k2-by-n2
+    lhlen = (m - m2) * sizeof(real);
+    rhlen = (n - n2) * sizeof(real);
     for (i = 0; i < k2; ++i)
     {
-        memcpy(lh + i * m2, A12 + i * lda, (m - m2) * sizeof(real));
+        memcpy(lh + i * m2, A12 + i * lda, lhlen);
         if (m2 > m - m2)
             *(lh + i * m2 + m - m2) = 0;
         cblas_axpy(m2, -1, A11 + i * lda, 1, lh + i * m2, 1);
-    }
-    // rh = B11 + B12 is k2-by-n2
-    for (i = 0; i < k2; ++i)
-    {
-        memcpy(rh + i * (n - n2), B11 + i * ldb, (n - n2) * sizeof(real));
+
+        memcpy(rh + i * (n - n2), B11 + i * ldb, rhlen);
         cblas_axpy(n - n2, 1, B12 + i * ldb, 1, rh + i * (n - n2), 1);
     }
     // Recursive call
@@ -198,17 +191,15 @@ void StrassenATBRec(const MKL_INT m, const MKL_INT n, const MKL_INT k,
 
     // M7 = (A21 - A22) * (B21 + B22)
     // lh = A21 - A22 is (k - k2)-by-m2
-    for (i = 0; i < k - k2; ++i)
-    {
-        memcpy(lh + i * m2, A21 + i * lda, m2 * sizeof(real));
-        cblas_axpy(m - m2, -1, A22 + i * lda, 1, lh + i * m2, 1);
-    }
-    // if (k2 > k - k2)
-    //     memcpy(lh + (k2 - 1) * m2, A21 + (k2 - 1) * lda, m2 * sizeof(real));
     // rh = B21 + B22 is (k - k2)-by-n2
+    lhlen = m2 * sizeof(real);
+    rhlen = n2 * sizeof(real);
     for (i = 0; i < k - k2; ++i)
     {
-        memcpy(rh + i * n2, B21 + i * ldb, n2 * sizeof(real));
+        memcpy(lh + i * m2, A21 + i * lda, lhlen);
+        cblas_axpy(m - m2, -1, A22 + i * lda, 1, lh + i * m2, 1);
+
+        memcpy(rh + i * n2, B21 + i * ldb, rhlen);
         cblas_axpy(n - n2, 1, B22 + i * ldb, 1, rh + i * n2, 1);
     }
     // Recursive call

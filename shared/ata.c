@@ -16,6 +16,7 @@
 #include <omp.h>
 
 #define ATA_BASE_CASE   512
+#define ALPHA 0.5
 
 // Computes C = C + alpha * A^T * A.
 // A is K-by-N, C is N-by-N
@@ -86,7 +87,7 @@ void AtALocal_MT(AtAParams* params)
 	integer numth = params->num_threads;
 
 
-	TaskTree tree = SimulateExecution(A->M, C->M, numth, 0.5);
+	TaskTree tree = SimulateExecution(A->M, C->M, numth, ALPHA);
 	TaskNode* Node;
 	Task T;
 	size_t Level = tree.Height;

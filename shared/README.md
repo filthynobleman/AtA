@@ -8,13 +8,19 @@ sudo apt-get install intel-mkl
 ```
 As an alternative, you can build the project using any *CBLAS* backend. For example, you can use [*OpenBlas*](https://www.openblas.net/), or the distribution provided from the *Linux* package manager, which you can easily install with the command
 ```
-`sudo apt-get install libblas-dev
+sudo apt-get install libblas-dev
 ```
 
 Also, you will need a working installation of [*OpenMP*](https://www.openmp.org/), which you can download from the website or install through the package manager with the command
 ```
 sudo apt-get install libomp-dev
 ```
+
+In case you want to build the project with *Intel MKL*, you will also need a working installation of *Threading Building Blocks* (*TBB*), which you can find [here](https://github.com/oneapi-src/oneTBB) as a compilable source, [here](https://software.intel.com/content/www/us/en/develop/tools/oneapi/base-toolkit.html) as an intel distribution, or install through the package manager with the command
+```
+sudo apt-get install tbb
+```
+> :warning: **Read this if you choose a TBB version different from the *Intel* one:** the `CMakeLists.txt` file for this project relies on the *CMake* module `FindTBB.cmake`, located in the directory `cmake`. This module actually works well with *Intel TBB* distribution, but you could need to modify it in case you choose a different distribution.
 
 ## Building the project
 Create a directory for building the project and move in

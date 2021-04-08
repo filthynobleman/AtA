@@ -26,6 +26,8 @@ cmake <options> ..
 ```
 where available options are:
  - `USE_DOUBLES`=**ON**|OFF, which determines if the project must be compiled using double or single floating point precision.
+ - `PROCESS_SYNCHRONIZATION`=ON|**OFF**, which determines if processes must be synchronized after the computation, before they start sending up data. *This is useful only for debug purposes and on;ly affects the execution time. Synchronization already occurs between communicating processes.*
+ - `COMPUTE_ONLY`=ON|**OFF**, which determines if processes must stop after the computation at leaf level, or they have to continue the execution until root process retrieves back the computed matrix. *This is useful only for debug purposes.*
 
 
 Compile
@@ -43,10 +45,9 @@ The program `TestAtADistributed` generates a random matrix, `A`, with dimensions
 
 The command line execution for `TestAtADistributed` is the following
 ```
-mpirun -np p ./TestAtADistributed [-N n] [-K k] [-c] [-t]
+mpirun -np p ./TestAtADistributed [-N n] [-K k] [-t]
 ```
 where the options are:
  - `-N` to select the number of columns of `A` and the dimensions of `C`. Default is `1000`;
  - `-K` to select the number of rows of `A`. Default is `1000`;
- - `-c` to determine if the result of the operation must be tested against the result from the *ScaLAPACK* routine `p?syrk`;
- - `-t` to determine if the execution time of the algorithm must be printed on screen. In combination with `-c`, also prints the execution time for *ScaLAPACK*.
+ - `-t` to determine if the execution time of the algorithm must be printed on screen.

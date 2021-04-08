@@ -4,7 +4,8 @@
 #define AtA_Distributed_VERSION_MAJOR @AtA_Distributed_VERSION_MAJOR@
 #define AtA_Distributed_VERSION_MINOR @AtA_Distributed_VERSION_MINOR@
 #cmakedefine DOUBLE_PRECISION
-#cmakedefine ATA_USE_STRASSEN
+#cmakedefine SYNCHRONIZE_PROCESSES
+#cmakedefine ONLY_COMPUTE
 
 
 #include <stdlib.h>

@@ -1,7 +1,7 @@
 /**
  * @file       test_ata.c
  *
- * @brief      Test shared memory ATA algorithm.
+ * @brief      Test shared memory ATA-S algorithm.
  *
  * @author     Filippo Maggioli, Viviana Arrigoni
  *             {maggioli,arrigoni}@di.uniroma1.it
@@ -116,7 +116,7 @@ int main(int argc, char* const *argv)
         printf("Done.\n");
 
 
-    printf("Computing C = A^T * A with ATA algorithm... ");
+    printf("Computing C = A^T * A with ATA-S algorithm... ");
     fflush(stdout);
     TimerStart(Beg);
     Matrix mA = { A, K, N, N };

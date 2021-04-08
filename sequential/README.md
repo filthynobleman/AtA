@@ -8,7 +8,7 @@ sudo apt-get install intel-mkl
 ```
 As an alternative, you can build the project using any *CBLAS* backend. For example, you can use [OpenBlas](https://www.openblas.net/), or the distribution provided from the *Linux* package manager, which you can easily install with the command
 ```
-`sudo apt-get install libblas-dev
+sudo apt-get install libblas-dev
 ```
 
 ## Building the project
