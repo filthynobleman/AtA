@@ -1,1 +1,0 @@
-mpicc -O3  -DMKL_ILP64  -m64  -I"${MKLROOT}/include" ATAComp.c matrices.c queue.c simulexec.c -o main  -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lgomp -lpthread -lm -ldl -DDOUBLE_PRECISION
