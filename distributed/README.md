@@ -45,9 +45,10 @@ The program `TestAtADistributed` generates a random matrix, `A`, with dimensions
 
 The command line execution for `TestAtADistributed` is the following
 ```
-mpirun -np p ./TestAtADistributed [-N n] [-K k] [-t]
+mpirun -np p ./TestAtADistributed [-N n] [-K k] [-c] [-t]
 ```
 where the options are:
  - `-N` to select the number of columns of `A` and the dimensions of `C`. Default is `1000`;
  - `-K` to select the number of rows of `A`. Default is `1000`;
- - `-t` to determine if the execution time of the algorithm must be printed on screen.
+ - `-c` to determine if the result of the operation must be tested against the result from the *BLAS* routine `?syrk`;
+ - `-t` to determine if the execution time of the algorithm must be printed on screen. In combination with `-c`, also prints the execution time for *BLAS*.
