@@ -1,1 +1,11 @@
 distributed/trash/
+distributed/job*
+distributed/ATAnew*
+distributed/cblas.txt
+distributed/a.out
+distributed/compile_cmdline
+distrbuted/*.sh
+distributed/prova*
+distributed/pseudocode.c
+distributed/*Scalapack.c
+distributed/textree.c

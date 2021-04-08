@@ -1,3 +1,14 @@
+/**
+ * @file       queue.h
+ *
+ * @brief      Interface for a generic, simple queue structure.
+ *
+ * @author     Filippo Maggioli, Viviana Arrigoni
+ *             {maggioli,arrigoni}@di.uniroma1.it
+ *             Sapienza, University of Rome - Department of Computer Science
+ *             
+ * @date       12 Jan 2021
+ */
 #ifndef ATA_QUEUE_H_
 #define ATA_QUEUE_H_
 

@@ -1,3 +1,15 @@
+/**
+ * @file       simulexec.h
+ *
+ * @brief      Interface exposing functions and data structures for generating the
+ *             ATA recursion tree.
+ *
+ * @author     Filippo Maggioli, Viviana Arrigoni
+ *             {maggioli,arrigoni}@di.uniroma1.it
+ *             Sapienza, University of Rome - Department of Computer Science
+ *             
+ * @date       12 Jan 2021
+ */
 #ifndef ATA_SIMULEXEC_H_
 #define ATA_SIMULEXEC_H_ 
 

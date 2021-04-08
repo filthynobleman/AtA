@@ -1,3 +1,14 @@
+/**
+ * @file       simulexec.c
+ *
+ * @brief      Implementation of functions exposed in simulexec.h.
+ *
+ * @author     Filippo Maggioli, Viviana Arrigoni
+ *             {maggioli,arrigoni}@di.uniroma1.it
+ *             Sapienza, University of Rome - Department of Computer Science
+ *             
+ * @date       12 Jan 2021
+ */
 #include "simulexec.h"
 #include "queue.h"
 

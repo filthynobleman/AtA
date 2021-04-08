@@ -1,3 +1,14 @@
+/**
+ * @file       simulexec.h
+ *
+ * @brief      Interface exposing functions and data structures for handling matrices.
+ *
+ * @author     Filippo Maggioli, Viviana Arrigoni
+ *             {maggioli,arrigoni}@di.uniroma1.it
+ *             Sapienza, University of Rome - Department of Computer Science
+ *             
+ * @date       12 Jan 2021
+ */
 #ifndef ATA_MATRICES_H_
 #define ATA_MATRICES_H_
 

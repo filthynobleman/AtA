@@ -1,7 +1,7 @@
 # AtA
 This repository contains the code related to the article ...  
   
-Each folder contains a separate project, which its own building instruction and sample applications. Please, refer to the proper `README` file for each project.  
+Each folder contains a separate project, with its own building instruction and sample applications. Please, refer to the proper `README` file for each sub-project.  
 
 Here's a list of the projects and their content:
  - `sequential` contains the implementation of the sequential AtA algorithm, and provides an efficient implementation of the Strassen's algorithm.

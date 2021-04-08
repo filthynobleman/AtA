@@ -1,3 +1,14 @@
+/**
+ * @file       queue.h
+ *
+ * @brief      Implementation of a generic, simple queue structure.
+ *
+ * @author     Filippo Maggioli, Viviana Arrigoni
+ *             {maggioli,arrigoni}@di.uniroma1.it
+ *             Sapienza, University of Rome - Department of Computer Science
+ *             
+ * @date       12 Jan 2021
+ */
 #include "queue.h"
 
 
