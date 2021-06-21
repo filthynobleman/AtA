@@ -1,5 +1,5 @@
 # AtA
-This repository contains the code related to the article ...  
+This repository contains the code related to the article *Efficiently Parallelizable Strassen-Based Multiplication of a Matrix by its Transpose* (V. Arrigoni, F. Maggioli, A. Massini, E. Rodolà).  
   
 Each folder contains a separate project, with its own building instruction and sample applications. Please, refer to the proper `README` file for each sub-project.  
 
